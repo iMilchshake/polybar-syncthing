@@ -1,6 +1,6 @@
 # polybar-syncthing
 
-Polybar widget for syncthing status via its REST API. Shows number of connected devices, sync state of folders, pending folders/devices, and errors.
+Polybar widget for syncthing status via its REST API. Shows number of connected devices, sync state, conflicts, pending folders/devices, and errors.
 
 ## Setup
 

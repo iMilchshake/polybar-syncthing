@@ -1,10 +1,18 @@
 #!/usr/bin/env python3
 
 
-import json, ssl, urllib.request
+import json, os, re, ssl, sys, urllib.request
 
 ADDRESS = "https://127.0.0.1:8384"  # u might need to change port if u reconfigured this
-API_KEY = ""  # get via GUI or get from config.xml
+API_KEY = ""  # set manually, or use --auto-key to read from config.xml
+
+# --auto-key: read API key from ~/.local/state/syncthing/config.xml
+if "--auto-key" in sys.argv:
+    config_path = os.path.expanduser("~/.local/state/syncthing/config.xml")
+    m = re.search(r"<apikey>(.+?)</apikey>", open(config_path).read())
+    if not m:
+        exit("Error: could not find API key in config.xml")
+    API_KEY = m.group(1)
 
 if API_KEY == "":
     exit("Error: configure API key")
@@ -23,22 +31,24 @@ def get(path):
 try:
     conns = get("system/connections")
     errors = get("system/error")
-    completion = get("db/completion")
     p_devices = get("cluster/pending/devices")
     p_folders = get("cluster/pending/folders")
+    connected_ids = [did for did, d in conns["connections"].items() if d["connected"]]
+    connected = len(connected_ids)
+    total = len(conns["connections"])
+    completions = [get("db/completion")] + [
+        get(f"db/completion?device={did}") for did in connected_ids
+    ]
+    syncing = any(c["completion"] < 100 for c in completions)
 except Exception as e:
     print(f"script error: {e}")
     exit()
-
-connected = sum(1 for d in conns["connections"].values() if d["connected"])
-total = len(conns["connections"])
-syncing = completion["completion"] < 100
 has_error = bool(errors.get("errors"))
 pending = len(p_devices) + len(p_folders)
 
 # requires nerdfonts https://www.nerdfonts.com
-status = "󰴋 " if syncing else "󱥾 "
-errmsg = " warning" if has_error else ""
+status = "󰴋" if syncing else "󱥾"
+errmsg = "  warning" if has_error else ""
 pendmsg = (f" 󱧊 {len(p_folders)}" if p_folders else "") + (
     f" 󰭙 {len(p_devices)}" if p_devices else ""
 )
